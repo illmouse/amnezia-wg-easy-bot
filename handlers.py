@@ -72,7 +72,7 @@ def options():
         [InlineKeyboardButton("Create backup", callback_data="button_get_backup")],
         [InlineKeyboardButton("Create peer", callback_data="button_create_peer"), InlineKeyboardButton("Delete peer", callback_data="button_delete_peer")],
         [InlineKeyboardButton("Enable peer", callback_data="button_create_peer"), InlineKeyboardButton("Disable peer", callback_data="button_delete_peer")],
-        [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Get QR", callback_data="button_get_config")],
+        [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Get QR", callback_data="button_get_qr")],
     ]
 
 ########### HANDLERS ###########
@@ -274,7 +274,7 @@ async def callBackHandler(update: Update, context: CallbackContext):
             text = await handler_delete_peer(peer_id, update, context)
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
-        elif action == 'option_get_config':
+        elif action == 'option_get_peer_config':
             logger.info(f'Catch {action}. Proceeding...')
             text = await handler_get_config(peer_id, update, context)
             keyboard = options()
