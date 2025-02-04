@@ -71,7 +71,7 @@ def options():
         [InlineKeyboardButton("Peer list", callback_data="button_peers")],
         [InlineKeyboardButton("Create backup", callback_data="button_get_backup")],
         [InlineKeyboardButton("Create peer", callback_data="button_create_peer"), InlineKeyboardButton("Delete peer", callback_data="button_delete_peer")],
-        [InlineKeyboardButton("Enable peer", callback_data="button_enable_peer"), InlineKeyboardButton("Disable peer", callback_data="button_delete_peer")],
+        [InlineKeyboardButton("Enable peer", callback_data="button_enable_peer"), InlineKeyboardButton("Disable peer", callback_data="button_disable_peer")],
         [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Get QR", callback_data="button_get_qr")],
     ]
 
