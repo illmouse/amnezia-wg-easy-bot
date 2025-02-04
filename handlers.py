@@ -1,13 +1,21 @@
-import os
-import requests
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext, ConversationHandler
+########### IMPORTS ###########
+from telegram import Update, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, ConversationHandler, CallbackQueryHandler
 from scripts import *
-from bot import ALLOWED_USERNAMES, BACKUP_PATH
 
+########### CONVERSATION STATES ###########
 # Define states for conversation
-CREATE_CLIENT_NAME = 1
+CREATE_PEER_NAME = 1
 
+########### VARIABLES ###########
+# Load variables
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "botToken_123")
+ALLOWED_USERNAMES = os.environ.get('ALLOWED_USERNAMES', '@nouser').split(',')
+
+# Constant variables
+NEW_PEER_HOLDER = "\n\nType a name for new peer. It must meet the conditions:\n\n - Max length of 15 characters\n - No Spaces, / or :\n Must not be . or ..\n - Must not be already used"
+
+########### HELPER FUNCTIONS ###########
 # Function to check if the username is allowed
 def is_allowed_user(username: str) -> bool:
     return username in ALLOWED_USERNAMES
@@ -28,63 +36,62 @@ async def check_username(update: Update, context: CallbackContext):
         return False  # Stop further processing of the update
     return True  # Username is allowed, continue with the logic
 
-import re
-
-def check_peer_name(client_name):
+def check_peer_name(peer_name):
     # Check max length of 15 characters
-    if len(client_name) > 15:
+    if len(peer_name) > 15:
         return "String exceeds max length of 15 characters."
 
     # Check if string contains spaces, /, or :
-    if any(char in client_name for char in [' ', '/', ':']):
+    if any(char in peer_name for char in [' ', '/', ':']):
         return "String contains invalid characters (spaces, /, or :)."
 
     # Check if string is '.' or '..'
-    if client_name in ['.', '..']:
+    if peer_name in ['.', '..']:
         return "String cannot be '.' or '..'."
 
     # If no issues, return None (meaning it's valid)
 
     # Check if name isn't used
-    client_data = get_client()
-    for client in client_data:
-        if client["name"] == client_name:
-            return f'{client_name} is already used by another peer. Please choose another one.'
+    peer_data = get_peers()
+    for peer in peer_data:
+        if peer["name"] == peer_name:
+            return f'{peer_name} is already used by another peer. Please choose another one.'
     return None
 
-def choose_client(action: str):
-    client_data = get_client()
+def choose_peer(action: str):
+    peer_data = get_peers()
     keyboard = []
-    for client in client_data:
-        if action == 'get_config' or action == 'delete_client' or (action == 'disable_client' and client["enabled"] == True) or (action == 'enable_client' and client["enabled"] == False):
-            keyboard.append([InlineKeyboardButton(f'{client["name"]}/{client["address"]}', callback_data=f"option_{action}:{client['id']}")])
+    for peer in peer_data:
+        if action == 'get_peer_config' or action == 'delete_peer' or (action == 'disable_peer' and peer["enabled"] == True) or (action == 'enable_peer' and peer["enabled"] == False):
+            keyboard.append([InlineKeyboardButton(f'{peer["name"]}/{peer["address"]}', callback_data=f"option_{action}:{peer['id']}")])
     return keyboard
 
 def options():
     return [
-        [InlineKeyboardButton("Peer list", callback_data="button_clients")],
+        [InlineKeyboardButton("Peer list", callback_data="button_peers")],
         [InlineKeyboardButton("Create backup", callback_data="button_get_backup")],
-        [InlineKeyboardButton("Create peer", callback_data="button_create_client"), InlineKeyboardButton("Delete peer", callback_data="button_delete_client")],
-        [InlineKeyboardButton("Enable peer", callback_data="button_enable_client"), InlineKeyboardButton("Disable peer", callback_data="button_disable_client")],
+        [InlineKeyboardButton("Create peer", callback_data="button_create_peer"), InlineKeyboardButton("Delete peer", callback_data="button_delete_peer")],
+        [InlineKeyboardButton("Enable peer", callback_data="button_create_peer"), InlineKeyboardButton("Disable peer", callback_data="button_delete_peer")],
         [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Get QR", callback_data="button_get_qr")],
     ]
 
-# Получить текущих клиентов
-async def handler_get_clients(update: Update, context: CallbackContext):
-    return get_client_data()
+########### HANDLERS ###########
+# Get formatted list of peers
+async def handler_get_peers(update: Update, context: CallbackContext):
+    return extract_peert_data()
 
-# Создать клиента
-async def handler_create_client(update: Update, context: CallbackContext):
-    client_name = update.message.text
-    logger.info(f"Client name received: {client_name}")
+# Create peer
+async def handler_create_peer(update: Update, context: CallbackContext):
+    peer_name = update.message.text
+    logger.info(f"Peer name received: {peer_name}")
 
-    nameCheck = check_peer_name(client_name)
+    nameCheck = check_peer_name(peer_name)
 
     if nameCheck:
-        await update.message.reply_text(nameCheck + "\n\nType a name for new peer. It must meet the conditions:\n\n - Max length of 15 characters\n - No Spaces, / or :\n Must not be . or ..\n - Must not be already used")
-        return CREATE_CLIENT_NAME
+        await update.message.reply_text(nameCheck + NEW_PEER_HOLDER)
+        return CREATE_PEER_NAME
 
-    file_data = create_new_client(client_name)
+    file_data = create_new_peer(peer_name)
     with open(file_data["filename"], 'wb') as f:
         f.write(file_data["file"])
 
@@ -93,42 +100,42 @@ async def handler_create_client(update: Update, context: CallbackContext):
     os.remove(file_data["filename"])
     return ConversationHandler.END
 
-async def handler_disable_client(client_id, update: Update, context: CallbackContext):
-    if disable_client(client_id):
-        return f'Client {client_id} has been disabled.'
+async def handler_disable_peer(peer_id, update: Update, context: CallbackContext):
+    if disable_peer(peer_id):
+        return f'Peer {peer_id} has been disabled.'
     else:
-        return f'Something went wrong while trying disable client {client_id}'
+        return f'Something went wrong while trying disable peer {peer_id}'
 
-async def handler_delete_client(client_id, update: Update, context: CallbackContext):
-    if delete_client(client_id):
-        return f'Client {client_id} has been deleted.'
+async def handler_delete_peer(peer_id, update: Update, context: CallbackContext):
+    if delete_peer(peer_id):
+        return f'Peer {peer_id} has been deleted.'
     else:
-        return f'Something went wrong while trying delete client {client_id}'
+        return f'Something went wrong while trying delete peer {peer_id}'
 
-async def handler_enable_client(client_id, update: Update, context: CallbackContext):
-    if enable_client(client_id):
-        return f'Client {client_id} has been enabled.'
+async def handler_enable_peer(peer_id, update: Update, context: CallbackContext):
+    if enable_peer(peer_id):
+        return f'Peer {peer_id} has been enabled.'
     else:
-        return f'Something went wrong while trying enable client {client_id}'
+        return f'Something went wrong while trying enable peer {peer_id}'
 
-async def handler_get_config(client_id, update: Update, context: CallbackContext):
+async def handler_get_config(peer_id, update: Update, context: CallbackContext):
     query = update.callback_query
     callback_data = query.data  # This will be the callback_data you set on the buttons
     await query.answer()  # Acknowledge the button press
     
-    client_data = get_client()
+    peer_data = get_peers()
 
-    for client in client_data:
-        if client.get("id") == client_id:
-            client_name = client.get("name")
+    for peer in peer_data:
+        if peer.get("id") == peer_id:
+            peer_name = peer.get("name")
             break
 
-    file_data = get_config(client_id)
-    with open(f'{client_name}.conf', 'wb') as f:
+    file_data = get_peer_config(peer_id)
+    with open(f'{peer_name}.conf', 'wb') as f:
         f.write(file_data)
 
     params = {
-        'document': open(f'{client_name}.conf', 'rb'),
+        'document': open(f'{peer_name}.conf', 'rb'),
         'reply_markup': InlineKeyboardMarkup(options()),
         'caption': 'Импортируй файл в AmneziaWG.'
     }
@@ -139,7 +146,7 @@ async def handler_get_config(client_id, update: Update, context: CallbackContext
     await context.bot.send_document(**params)
     await query.message.delete()
 
-    os.remove(f'{client_name}.conf')
+    os.remove(f'{peer_name}.conf')
 
 async def handler_get_backup(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -197,51 +204,49 @@ async def callBackHandler(update: Update, context: CallbackContext):
     logger.info(f'Button was {query.data} pressed')
     callback_data = query.data  # This will be the callback_data you set on the buttons
     await query.answer()  # Acknowledge the button press
-    # chat_id = query.message.chat.id
-    # message_thread_id = query.message.message_thread_id
     
     # Handle button actions based on the callback data
-    if callback_data == "button_clients":
-        text = await handler_get_clients(update, context)
+    if callback_data == "button_peers":
+        text = await handler_get_peers(update, context)
         keyboard = options()
         await handler_reply(text, keyboard, update, context)
-    elif callback_data == "button_create_client":
-        text = "Type a name for new peer. It must meet the conditions:\n\n - Max length of 15 characters\n - No Spaces, / or :\n - Must not be . or ..\n - Must not be already used"
+    elif callback_data == "button_create_peer":
+        text = NEW_PEER_HOLDER
         keyboard = None
         await handler_reply(text, keyboard, update, context)
         # await context.bot.send_message(text="Type a name for new peer...")
-        return CREATE_CLIENT_NAME
-    elif callback_data == "button_disable_client":
-        if choose_client('disable_client'):
+        return CREATE_PEER_NAME
+    elif callback_data == "button_disable_peer":
+        if choose_peer('disable_peer'):
             text = "Choose peer to disble..."
-            keyboard = choose_client('disable_client')
+            keyboard = choose_peer('disable_peer')
             await handler_reply(text, keyboard, update, context)
         else:
             text = "No peers available for disabling."
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
-    elif callback_data == "button_delete_client":
-        if choose_client('delete_client'):
+    elif callback_data == "button_delete_peer":
+        if choose_peer('delete_peer'):
             text = "Choose peer to delete..."
-            keyboard = choose_client('delete_client')
+            keyboard = choose_peer('delete_peer')
             await handler_reply(text, keyboard, update, context)
         else:
             text = "No peers available for deleting."
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
-    elif callback_data == "button_enable_client":
-        if choose_client('enable_client'):
+    elif callback_data == "button_enable_peer":
+        if choose_peer('enable_peer'):
             text = "Choose peer to enable..."
-            keyboard = choose_client('enable_client')
+            keyboard = choose_peer('enable_peer')
             await handler_reply(text, keyboard, update, context)
         else:
             text = "No peers available for enabling."
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
     elif callback_data == "button_get_config":
-        if choose_client('get_config'):
+        if choose_peer('get_peer_config'):
             text = "Choose peer to download config..."
-            keyboard = choose_client('get_config')
+            keyboard = choose_peer('get_peer_config')
             await handler_reply(text, keyboard, update, context)
         else:
             text = "No peers available."
@@ -252,25 +257,25 @@ async def callBackHandler(update: Update, context: CallbackContext):
     elif callback_data.startswith("option_"):
         logger.info(f'Catch option_. Proceeding...')
 
-        action, client_id = callback_data.split(":")  # client_id is after the colon
+        action, peer_id = callback_data.split(":")  # peer_id is after the colon
         
-        if action == 'option_disable_client':
+        if action == 'option_disable_peer':
             logger.info(f'Catch {action}. Proceeding...')
-            text = await handler_disable_client(client_id, update, context)
+            text = await handler_disable_peer(peer_id, update, context)
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
-        elif action == 'option_enable_client':
+        elif action == 'option_enable_peer':
             logger.info(f'Catch {action}. Proceeding...')
-            text = await handler_enable_client(client_id, update, context)
+            text = await handler_enable_peer(peer_id, update, context)
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
-        elif action == 'option_delete_client':
+        elif action == 'option_delete_peer':
             logger.info(f'Catch {action}. Proceeding...')
-            text = await handler_delete_client(client_id, update, context)
+            text = await handler_delete_peer(peer_id, update, context)
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
         elif action == 'option_get_config':
             logger.info(f'Catch {action}. Proceeding...')
-            text = await handler_get_config(client_id, update, context)
+            text = await handler_get_config(peer_id, update, context)
             keyboard = options()
             await handler_reply(text, keyboard, update, context)
