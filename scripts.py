@@ -86,7 +86,7 @@ def enable_peer(peer_id, base_url=AWG_URL):
     else:
         return f'Error: {response.status_code} - {response.text}'
 
-def extract_peert_data(session_id=get_session_id()):
+def extract_peer_data(session_id=get_session_id()):
     peer_data=get_peers(base_url=AWG_URL)
     result = f'Всего клиентов: {len(peer_data)}\n'
     for peer in peer_data:

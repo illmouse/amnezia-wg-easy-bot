@@ -31,6 +31,9 @@ def main():
     # Add conversation handler to the application
     application.add_handler(conv_callback_handler)
 
+    # Start command handler
+    application.add_handler(CommandHandler("start", start))
+    
     # Start the bot by polling for updates
     logger.info("Bot is now polling for updates...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
