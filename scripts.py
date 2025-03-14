@@ -1,10 +1,13 @@
 ########### IMPORTS ###########
 import os
+import math
 import requests
 import logging
 from datetime import datetime
 
 ########### VARIABLES ###########
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "botToken_123")
+ALLOWED_USERNAMES = os.environ.get('ALLOWED_USERNAMES', '@nouser').split(',')
 AWG_URL = os.environ.get("AWG_URL", 'http://wg.example.com:52820')
 AWG_PASSWORD = os.environ.get("AWG_PASSWORD", "password")
 BACKUP_PATH = os.environ.get("BACKUP_PATH", "/opt/app")
@@ -14,6 +17,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+########### SCRIPTS ###########
+def pages_count(list, group_size=5):
+    total_items = len(list)
+    return math.ceil(total_items / group_size)
 
 ########### SCRIPTS ###########
 # Make sure to update the password to the password you set for your webgui
@@ -86,10 +94,12 @@ def enable_peer(peer_id, base_url=AWG_URL):
     else:
         return f'Error: {response.status_code} - {response.text}'
 
-def extract_peer_data(session_id=get_session_id()):
-    peer_data=get_peers(base_url=AWG_URL)
-    result = f'Всего клиентов: {len(peer_data)}\n'
-    for peer in peer_data:
+def extract_peer_data(peer_data, page_number, session_id=get_session_id()):
+    # peer_data=get_peers()
+    peer_data=[peer_data[i:i + 5] for i in range(0, len(peer_data), 5)]
+    
+    result = f'<strong>Peers total:</strong> {len(peer_data)*5}\n\n'
+    for peer in peer_data[int(page_number)]:
         # Convert transfer values from bytes to MBytes
         transfer_rx_mb = peer['transferRx'] / (1024 ** 2) if peer['transferRx'] else 0
         transfer_tx_mb = peer['transferTx'] / (1024 ** 2) if peer['transferTx'] else 0
@@ -109,6 +119,8 @@ def extract_peer_data(session_id=get_session_id()):
         result += f"- Created At: `{peer['createdAt']}`\n"
         result += f"- Updated At: `{peer['updatedAt']}`\n"
         result += f"- Expired At: `{peer['expiredAt'] if peer['expiredAt'] else 'N/A'}`</blockquote>"
+
+    result += f'\n\n<strong>Page:</strong> {int(page_number)+1}'
 
     return result
 

@@ -7,11 +7,6 @@ from scripts import *
 # Define states for conversation
 CREATE_PEER_NAME = 1
 
-########### VARIABLES ###########
-# Load variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "botToken_123")
-ALLOWED_USERNAMES = os.environ.get('ALLOWED_USERNAMES', '@nouser').split(',')
-
 # Constant variables
 NEW_PEER_HOLDER = "\n\nType a name for new peer. It must meet the conditions:\n\n - Max length of 15 characters\n - No Spaces, / or :\n Must not be . or ..\n - Must not be already used"
 
@@ -76,9 +71,43 @@ def options():
     ]
 
 ########### HANDLERS ###########
+
+# Define async function to handle the /start command
+async def start(update: Update, context: CallbackContext):
+    if not await check_username(update, context):
+        return  # Stop further processing if the user is not authorized
+
+    text = "Choose options:"
+    keyboard = options()
+
+    # Define inline keyboard for the response
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Send a message with inline buttons
+    try:
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    except:
+        await handler_reply(text, keyboard, update, context)
+
+    logger.info("Start command executed successfully.")
+
 # Get formatted list of peers
-async def handler_get_peers(update: Update, context: CallbackContext):
-    return extract_peer_data()
+async def handler_get_peers(update: Update, context: CallbackContext, page_number):
+    peer_data = get_peers()
+    pages = pages_count(peer_data, group_size=5)
+    keyboard = [[InlineKeyboardButton("Return to main menu", callback_data=f"start")],[]]
+
+    for i in range(pages):
+        keyboard[1].append(InlineKeyboardButton(i+1, callback_data=f"button_peers:{i}"))
+
+    result = {
+        'text': extract_peer_data(peer_data, page_number),
+        'keyboard' : keyboard
+    }
+
+    await update.callback_query.message.delete()
+
+    return result
 
 # Create peer
 async def handler_create_peer(update: Update, context: CallbackContext):
@@ -96,7 +125,7 @@ async def handler_create_peer(update: Update, context: CallbackContext):
         f.write(file_data["file"])
 
     # Send file to the user
-    await update.message.reply_document(document=open(file_data["filename"], 'rb'), caption='Импортируй файл в AmneziaWG.', reply_markup=InlineKeyboardMarkup(options()))
+    await update.message.reply_document(document=open(file_data["filename"], 'rb'), caption='Import file in AmneziaWG.\n<a href="https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share">Playstore</a> | <a href="https://apps.apple.com/ru/app/amneziawg/id6478942365">AppStore</a> | <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases/tag/1.0.0">Windows</a>', reply_markup=InlineKeyboardMarkup(options()), parse_mode='HTML')
     os.remove(file_data["filename"])
     return ConversationHandler.END
 
@@ -137,7 +166,8 @@ async def handler_get_config(peer_id, update: Update, context: CallbackContext):
     params = {
         'document': open(f'{peer_name}.conf', 'rb'),
         'reply_markup': InlineKeyboardMarkup(options()),
-        'caption': 'Импортируй файл в AmneziaWG.'
+        'parse_mode': 'HTML',
+        'caption': 'Import file in AmneziaWG.\n<a href="https://play.google.com/store/apps/details?id=org.amnezia.awg&pcampaignid=web_share">Playstore</a> | <a href="https://apps.apple.com/ru/app/amneziawg/id6478942365">AppStore</a> | <a href="https://github.com/amnezia-vpn/amneziawg-windows-client/releases/tag/1.0.0">Windows</a>'
     }
 
     params['chat_id'] = query.message.chat.id
@@ -180,15 +210,17 @@ async def handler_reply(text, keyboard, update: Update, context: CallbackContext
     if text:
         params['text'] = text
     else:
-        params['text'] = 'Replying to reqest...'
+        params['text'] = 'Replying to request...'
 
 
     if keyboard:
         params['reply_markup'] = InlineKeyboardMarkup(keyboard)
 
-    if query.message and query.message.text:
+    # if query.message and query.message.text:
+    try:
         await query.edit_message_text(**params)
-    else:
+    except:
+    # else:
         params['chat_id'] = chat_id
         if message_thread_id:
             params['message_thread_id'] = message_thread_id
@@ -205,11 +237,20 @@ async def callBackHandler(update: Update, context: CallbackContext):
     callback_data = query.data  # This will be the callback_data you set on the buttons
     await query.answer()  # Acknowledge the button press
     
+    # Start from beggining
+    if query.data == "start":
+        await start(update, context)  # Call the start function again
     # Handle button actions based on the callback data
-    if callback_data == "button_peers":
-        text = await handler_get_peers(update, context)
-        keyboard = options()
-        await handler_reply(text, keyboard, update, context)
+    if callback_data.startswith("button_peers"):
+        page_number = 0
+        if ":" in callback_data:
+            page_number = callback_data.split(":")[1]  # peer_id is after the colon
+        peers_data = await handler_get_peers(update, context, page_number)
+        # logger.info(f'Here is peers_data {peers_data}')
+        await handler_reply(peers_data["text"], peers_data["keyboard"], update, context)
+        # text = await handler_get_peers(update, context)
+        # keyboard = options()
+        # await handler_reply(text, keyboard, update, context)
     elif callback_data == "button_create_peer":
         text = NEW_PEER_HOLDER
         keyboard = None
@@ -277,5 +318,3 @@ async def callBackHandler(update: Update, context: CallbackContext):
         elif action == 'option_get_peer_config':
             logger.info(f'Catch {action}. Proceeding...')
             text = await handler_get_config(peer_id, update, context)
-            keyboard = options()
-            await handler_reply(text, keyboard, update, context)

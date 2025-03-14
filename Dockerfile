@@ -25,4 +25,4 @@ RUN chown -R ${USER_NAME}:${GROUP_NAME} /opt/app
 USER ${USER_NAME}
 
 # Command to run the bot
-CMD ["python", "./bot.py"]
+CMD ["python", "bot.py"]

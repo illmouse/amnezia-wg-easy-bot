@@ -1,17 +1,5 @@
 from handlers import *  # Import all handler functions
 
-# Define async function to handle the /start command
-async def start(update: Update, context: CallbackContext):
-    if not await check_username(update, context):
-        return  # Stop further processing if the user is not authorized
-
-    # Define inline keyboard for the response
-    reply_markup = InlineKeyboardMarkup(options())
-    
-    # Send a message with inline buttons
-    await update.message.reply_text("Choose options:", reply_markup=reply_markup)
-    logger.info("Start command executed successfully.")
-
 # Main function to start the bot
 def main():
     logger.info("Starting the bot...")
