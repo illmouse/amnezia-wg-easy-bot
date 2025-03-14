@@ -1,6 +1,22 @@
 # amnezia-wg-easy-bot
 Amnezia Wireguard telegram bot built with python telegram.ext
 
+# What it can do
+
+* List all peers
+* Create/remove peer
+* Enable/disable peer
+* Get server backup
+* Get peer config file
+* Get peer config QR (not yet implemented)
+
+# Screenshots
+
+![Main menu](screenshots/main_menu.jpg)
+![Peer list](screenshots/peer_list.jpg)
+![Peer config](screenshots/new_peer_config.jpg)
+
+
 # Set up bot
 
 ### Prerequisites
