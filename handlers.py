@@ -67,7 +67,7 @@ def options():
         [InlineKeyboardButton("Create backup", callback_data="button_get_backup")],
         [InlineKeyboardButton("Create peer", callback_data="button_create_peer"), InlineKeyboardButton("Delete peer", callback_data="button_delete_peer")],
         [InlineKeyboardButton("Enable peer", callback_data="button_enable_peer"), InlineKeyboardButton("Disable peer", callback_data="button_disable_peer")],
-        [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Get QR", callback_data="button_get_qr")],
+        [InlineKeyboardButton("Get config", callback_data="button_get_config"), InlineKeyboardButton("Restart", callback_data="button_restart")],
     ]
 
 ########### HANDLERS ###########
@@ -241,6 +241,8 @@ async def callBackHandler(update: Update, context: CallbackContext):
     if query.data == "start":
         await start(update, context)  # Call the start function again
     # Handle button actions based on the callback data
+    if query.data == "button_restart":
+        sys.exit(1)
     if callback_data.startswith("button_peers"):
         page_number = 0
         if ":" in callback_data:
