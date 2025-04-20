@@ -121,6 +121,14 @@ async def handler_create_peer(update: Update, context: CallbackContext):
         return CREATE_PEER_NAME
 
     file_data = create_new_peer(peer_name)
+
+    # Check if required keys exist and are valid
+    if not file_data or "filename" not in file_data or "file" not in file_data:
+        error_msg = f"Something went wrong while creating the peer.\nDetails: {file_data}"
+        logger.error(error_msg)
+        await update.message.reply_text(error_msg)
+        return ConversationHandler.END
+        
     with open(file_data["filename"], 'wb') as f:
         f.write(file_data["file"])
 
