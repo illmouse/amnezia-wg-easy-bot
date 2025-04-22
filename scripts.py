@@ -95,8 +95,9 @@ def enable_peer(peer_id, base_url=AWG_URL):
     else:
         return f'Error: {response.status_code} - {response.text}'
 
-def extract_peer_data(peer_data, page_number, session_id=get_session_id()):
+def extract_peer_data(peer_data, page_number):
     # peer_data=get_peers()
+    session_id=get_session_id()
     peer_data=[peer_data[i:i + 5] for i in range(0, len(peer_data), 5)]
     
     result = f'<strong>Peers total:</strong> {len(peer_data)*5}\n\n'
@@ -125,8 +126,9 @@ def extract_peer_data(peer_data, page_number, session_id=get_session_id()):
 
     return result
 
-def create_new_peer(peer_name, base_url=AWG_URL, session_id=get_session_id()):
+def create_new_peer(peer_name, base_url=AWG_URL):
     # Make third request with session ID in Cookie header and provide a name for the new peer to be created
+    session_id=get_session_id()
     path = base_url + '/api/wireguard/client'
     name = peer_name
     headers = {'Content-Type': 'application/json', 'Cookie': f'connect.sid={session_id}'}
@@ -147,8 +149,9 @@ def create_new_peer(peer_name, base_url=AWG_URL, session_id=get_session_id()):
     else:
         return f'Error: {response.status_code} - {response.text}'
 
-def get_peer_config(peer_id, base_url=AWG_URL, session_id=get_session_id()):
+def get_peer_config(peer_id, base_url=AWG_URL):
     # Make third request with session ID in Cookie header and provide a name for the new peer to be created
+    session_id=get_session_id()
     path = base_url + '/api/wireguard/client/' + peer_id + '/configuration'
     headers = {'Content-Type': 'application/json', 'Cookie': f'connect.sid={session_id}'}
     response = requests.get(path, headers=headers)
@@ -159,7 +162,8 @@ def get_peer_config(peer_id, base_url=AWG_URL, session_id=get_session_id()):
     else:
         return "Error fetching file."
     
-def create_backup(base_url=AWG_URL, session_id=get_session_id()):
+def create_backup(base_url=AWG_URL):
+    session_id=get_session_id()
     path = base_url + '/api/wireguard/backup'
     headers = {'Content-Type': 'application/json', 'Cookie': f'connect.sid={session_id}'}
     response = requests.get(path, headers=headers)
@@ -186,8 +190,9 @@ def create_backup(base_url=AWG_URL, session_id=get_session_id()):
         logger.error(f"An error occurred while fetching the backup: {str(e)}")
         return f"An error occurred while fetching the backup: {str(e)}"
 
-def get_qr(peer_id, base_url=AWG_URL, session_id=get_session_id()):
+def get_qr(peer_id, base_url=AWG_URL):
     # Make third request with session ID in Cookie header and provide a name for the new peer to be created
+    session_id=get_session_id()
     path = base_url + '/api/wireguard/client/' + peer_id + '/qrcode.svg'
     headers = {'Content-Type': 'application/json', 'Cookie': f'connect.sid={session_id}'}
     response = requests.get(path, headers=headers)
