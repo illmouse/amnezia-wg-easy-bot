@@ -72,7 +72,7 @@ def options():
     ]
 
 ########### HANDLERS ###########
-de
+
 # Define async function to handle the /start command
 async def start(update: Update, context: CallbackContext):
     if not await check_username(update, context):
