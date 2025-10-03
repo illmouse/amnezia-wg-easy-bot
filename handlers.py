@@ -1,6 +1,7 @@
 ########### IMPORTS ###########
 from telegram import Update, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, ConversationHandler, CallbackQueryHandler
+from telegram.error import BadRequest
 from scripts import *
 
 ########### CONVERSATION STATES ###########
@@ -71,7 +72,7 @@ def options():
     ]
 
 ########### HANDLERS ###########
-
+de
 # Define async function to handle the /start command
 async def start(update: Update, context: CallbackContext):
     if not await check_username(update, context):
@@ -105,7 +106,16 @@ async def handler_get_peers(update: Update, context: CallbackContext, page_numbe
         'keyboard' : keyboard
     }
 
-    await update.callback_query.message.delete()
+    # Safely try to delete the previous message
+    try:
+        await update.callback_query.message.delete()
+    except BadRequest as e:
+        # Can't delete message (too old, system msg, already deleted, etc.)
+        # Just log it and continue gracefully
+        print(f"[WARN] Failed to delete message {update.callback_query.message.message_id}: {e}")
+    except Exception as e:
+        # Catch any other unexpected issue
+        print(f"[ERROR] Unexpected error while deleting message: {e}")
 
     return result
 
@@ -182,7 +192,17 @@ async def handler_get_config(peer_id, update: Update, context: CallbackContext):
     if query.message.message_thread_id:
         params['message_thread_id'] = query.message.message_thread_id
     await context.bot.send_document(**params)
-    await query.message.delete()
+
+    # Safely try to delete the previous message
+    try:
+        await update.callback_query.message.delete()
+    except BadRequest as e:
+        # Can't delete message (too old, system msg, already deleted, etc.)
+        # Just log it and continue gracefully
+        print(f"[WARN] Failed to delete message {update.callback_query.message.message_id}: {e}")
+    except Exception as e:
+        # Catch any other unexpected issue
+        print(f"[ERROR] Unexpected error while deleting message: {e}")
 
     os.remove(f'{peer_name}.conf')
 
@@ -204,7 +224,17 @@ async def handler_get_backup(update: Update, context: CallbackContext):
     if query.message.message_thread_id:
         params['message_thread_id'] = query.message.message_thread_id
     await context.bot.send_document(**params)
-    await query.message.delete()
+    
+    # Safely try to delete the previous message
+    try:
+        await update.callback_query.message.delete()
+    except BadRequest as e:
+        # Can't delete message (too old, system msg, already deleted, etc.)
+        # Just log it and continue gracefully
+        print(f"[WARN] Failed to delete message {update.callback_query.message.message_id}: {e}")
+    except Exception as e:
+        # Catch any other unexpected issue
+        print(f"[ERROR] Unexpected error while deleting message: {e}")
 
 async def handler_reply(text, keyboard, update: Update, context: CallbackContext):
     query = update.callback_query
